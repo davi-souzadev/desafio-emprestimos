@@ -8,6 +8,11 @@ public class Loan {
 
     private Double interest_rate;
 
+    public Loan(LoanType type, Double interest_rate) {
+        this.type = type;
+        this.interest_rate = interest_rate;
+    }
+
     public LoanType getType() {
         return type;
     }

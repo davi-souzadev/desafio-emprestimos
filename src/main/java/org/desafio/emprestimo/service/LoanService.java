@@ -3,6 +3,7 @@ package org.desafio.emprestimo.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.desafio.emprestimo.dto.LoanRequestDTO;
 import org.desafio.emprestimo.dto.LoanResponseDTO;
+import org.desafio.emprestimo.entity.Customer;
 import org.desafio.emprestimo.entity.Loan;
 import org.desafio.emprestimo.enums.LoanType;
 
@@ -13,49 +14,57 @@ import java.util.List;
 @ApplicationScoped
 public class LoanService {
 
-    private LoanResponseDTO createLoanResponseObject(LoanRequestDTO loanRequest, LoanResponseDTO loanResponse) {
-        List<Loan> loanList = new ArrayList<>();
-        loanResponse.customer = loanRequest.name;
-        loanResponse.loans = loanList;
-        return loanResponse;
-    }
-
-    private Loan setLoanProperties(LoanType loanType, Double interestRate) {
-        Loan loan = new Loan();
-        loan.setType(loanType);
-        loan.setInterest_rate(interestRate);
-        return loan;
-    }
+    private static final BigDecimal THREE_THOUSAND = BigDecimal.valueOf(3000);
+    private static final BigDecimal FIVE_THOUSAND = BigDecimal.valueOf(5000);
+    private static final double PERSONAL_RATE = 4D;
+    private static final double GUARANTEED_RATE = 3D;
+    private static final double CONSIGNMENT_RATE = 2D;
 
     public LoanResponseDTO verifyLoanProposals(LoanRequestDTO loanRequest) {
-        BigDecimal threeThousand = BigDecimal.valueOf(3000);
-        BigDecimal fiveThousand = BigDecimal.valueOf(5000);
-        LoanResponseDTO loanResponse = new LoanResponseDTO();
-        LoanResponseDTO loanObjectResponse = createLoanResponseObject(loanRequest, loanResponse);
-        boolean isLessOrEqualThanThreeThousand = loanRequest.income.compareTo(threeThousand) <= 0;
-        boolean isMoreThanThreeKAndLessThanFiveK =
-                loanRequest.income.compareTo(threeThousand) > 0
-                & loanRequest.income.compareTo(fiveThousand) < 0;
-        boolean livesInSP = loanRequest.location.equals("SP");
-        boolean isMoreThanFive5K = loanRequest.income.compareTo(fiveThousand) > 0;
-        boolean isUnder30YearsOld = loanRequest.age < 30;
+        List<Loan> loans = new ArrayList<>();
 
-        if (isLessOrEqualThanThreeThousand) {
-            loanObjectResponse.loans.add(setLoanProperties(LoanType.PERSONAL, 4D));
-            loanObjectResponse.loans.add(setLoanProperties(LoanType.GUARANTEED, 3D));
+
+        if (isLessOrEqualThan(loanRequest, THREE_THOUSAND)) {
+            loans.add(createLoan(LoanType.PERSONAL, PERSONAL_RATE));
+            loans.add(createLoan(LoanType.GUARANTEED, GUARANTEED_RATE));
         }
 
-        if (isMoreThanThreeKAndLessThanFiveK & livesInSP & isUnder30YearsOld) {
-            loanObjectResponse.loans.add(setLoanProperties(LoanType.PERSONAL, 4D));
-            loanObjectResponse.loans.add(setLoanProperties(LoanType.GUARANTEED, 3D));
+        if (isIncomeBetween(loanRequest, THREE_THOUSAND, FIVE_THOUSAND) & isLocationAt(loanRequest, "SP") & isAgeUnder(loanRequest, 30)) {
+            loans.add(createLoan(LoanType.PERSONAL, PERSONAL_RATE));
+            loans.add(createLoan(LoanType.GUARANTEED, GUARANTEED_RATE));
         }
 
-        if(isMoreThanFive5K) {
-            loanObjectResponse.loans.add(setLoanProperties(LoanType.PERSONAL, 4D));
-            loanObjectResponse.loans.add(setLoanProperties(LoanType.GUARANTEED, 3D));
-            loanObjectResponse.loans.add(setLoanProperties(LoanType.CONSIGNMENT, 2D));
+        if(isIncomeMoreThan(loanRequest, FIVE_THOUSAND)) {
+            loans.add(createLoan(LoanType.PERSONAL, PERSONAL_RATE));
+            loans.add(createLoan(LoanType.GUARANTEED, GUARANTEED_RATE));
+            loans.add(createLoan(LoanType.CONSIGNMENT, CONSIGNMENT_RATE));
         }
 
-        return loanResponse;
+        return new LoanResponseDTO(loanRequest.name, loans);
+    }
+
+    private Loan createLoan(LoanType type, double rate) {
+        return new Loan(type, rate);
+    }
+
+    private boolean isLessOrEqualThan(LoanRequestDTO request, BigDecimal value) {
+        return request.income.compareTo(value) <= 0;
+    }
+
+    private boolean isIncomeBetween(LoanRequestDTO request, BigDecimal min, BigDecimal max) {
+        return request.income.compareTo(min) > 0
+                && request.income.compareTo(max) < 0;
+    }
+
+    private boolean isIncomeMoreThan(LoanRequestDTO request, BigDecimal value) {
+        return request.income.compareTo(value) > 0;
+    }
+
+    private boolean isLocationAt(LoanRequestDTO request, String location) {
+        return request.location.equalsIgnoreCase(location);
+    }
+
+    private boolean isAgeUnder(LoanRequestDTO request, int age) {
+        return request.age < age;
     }
 }
